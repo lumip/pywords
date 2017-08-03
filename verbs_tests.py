@@ -5,7 +5,7 @@ import verbs
 
 class VerbsTests(unittest.TestCase):
 
-    def __lcs_matrix_test_worker(self, word_a: str, word_b: str, expected: verbs.MatrixType) -> None:
+    def __lcs_matrix_test_worker(self, word_a: str, word_b: str, expected: verbs.Matrix) -> None:
         lcs = verbs.LCSMatrix(word_a, word_b)
         self.assertEqual(lcs.word_a, word_a)
         self.assertEqual(lcs.word_b, word_b)
@@ -69,9 +69,15 @@ class VerbsTests(unittest.TestCase):
 
     def test_build_intervals_liegen_gelegen(self):
         interval_pairs = verbs.get_common_subsequence_intervals(verbs.LCSMatrix("liegen", "gelegen"))
-        expected_interval_pairs = [verbs.IntervalPair(verbs.Interval(0, 2), verbs.Interval(0, 3), False),
+        #expected_interval_pairs = [verbs.IntervalPair(verbs.Interval(0, 2), verbs.Interval(0, 3), False),
+        #                           verbs.IntervalPair(verbs.Interval(2, 6), verbs.Interval(3, 7), True)]
+        # todo: is that a desirable output? probably not -> the above result is achieved with prioritizing edits or deletes over inserts
+        # the lower result is achieved with prioritizing inserts in draws. is this always desirable? instead
+        # of establishing an order, should the costs for steps in the lcs computation be adjusted?
+        expected_interval_pairs = [verbs.IntervalPair(verbs.Interval(0, 0), verbs.Interval(0, 2), False),
+                                   verbs.IntervalPair(verbs.Interval(0, 1), verbs.Interval(2, 3), True),
+                                   verbs.IntervalPair(verbs.Interval(1, 2), verbs.Interval(3, 3), False),
                                    verbs.IntervalPair(verbs.Interval(2, 6), verbs.Interval(3, 7), True)]
-        # todo: is that a desirable output? probably not
         self.assertEqual(interval_pairs, expected_interval_pairs)
 
     def test_build_intervals_halloh_hello(self):
