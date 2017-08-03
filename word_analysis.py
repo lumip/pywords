@@ -1,14 +1,6 @@
-import sys
-import codecs
 from typing import List, Tuple, NamedTuple, TypeVar
 import abc
-
-#training_set = []
-#with codecs.open("words.txt", 'r', encoding='utf-8') as f:
-#    for line in f.readlines():
-#        training_set.append([part.strip() for part in line.split(",")])
-#
-#test = ["liegen", "gelegen"]
+from functools import reduce
 
 MutableMatrix = List[List[int]]
 Matrix = Tuple[Tuple[int]]
@@ -271,18 +263,31 @@ class InsertTransformation(WordTransformation):
         if not isinstance(other, InsertTransformation): return False
         return other.__insertee == self.__insertee
 
+    def __str__(self) -> str:
+        return "+" + self.__insertee
+
+    def __hash__(self) -> int:
+        return hash(self.__insertee)
+
 class EditTransformation(WordTransformation):
 
-    def __init__(self, insertee: str) -> None:
+    def __init__(self, insertee: str, number_of_chars_replaced: int) -> None:
         self.__insertee = insertee
+        self.__number_of_chars_replaced = number_of_chars_replaced
 
     def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
-        self.check_length_raise_error(transformee, len(self.__insertee))
-        return (transformed + self.__insertee), self.snip_transformee(transformee, len(self.__insertee))
+        self.check_length_raise_error(transformee, self.__number_of_chars_replaced)
+        return (transformed + self.__insertee), self.snip_transformee(transformee, self.__number_of_chars_replaced)
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, EditTransformation): return False
-        return other.__insertee == self.__insertee
+        return other.__insertee == self.__insertee and other.__number_of_chars_replaced == self.__number_of_chars_replaced
+
+    def __str__(self) -> str:
+        return "#" + str(self.__number_of_chars_replaced) + "/" + self.__insertee
+
+    def __hash__(self) -> int:
+        return (29 * self.__number_of_chars_replaced) ^ hash(self.__insertee)
 
 class DeleteTransformation(WordTransformation):
 
@@ -297,6 +302,12 @@ class DeleteTransformation(WordTransformation):
         if not isinstance(other, DeleteTransformation): return False
         return other.__number_of_chars == self.__number_of_chars
 
+    def __str__(self) -> str:
+        return "-" + str(self.__number_of_chars)
+
+    def __hash__(self) -> int:
+        return 17 * self.__number_of_chars + 13
+
 class SkipTransformation(WordTransformation):
 
     def __init__(self, number_of_chars: int) -> None:
@@ -309,6 +320,12 @@ class SkipTransformation(WordTransformation):
     def __eq__(self, other) -> bool:
         if not isinstance(other, SkipTransformation): return False
         return other.__number_of_chars == self.__number_of_chars
+
+    def __str__(self) -> str:
+        return ">" + str(self.__number_of_chars)
+
+    def __hash__(self) -> int:
+        return 23 * self.__number_of_chars + 11
 
 class WordTransformationSequence(WordTransformation):
 
@@ -324,6 +341,12 @@ class WordTransformationSequence(WordTransformation):
         if not isinstance(other, WordTransformationSequence): return False
         return other.__transformations == self.__transformations
 
+    def __repr__(self) -> str:
+        return str.join("", (str(transf) for transf in self.__transformations))
+
+    def __hash__(self) -> int:
+        return reduce(lambda a, b: hash(a) ^ hash(b), self.__transformations, 0)
+
 def build_word_transformation(subsequence_intervals: WordSubsequenceIntervals) -> WordTransformation:
     transforms = []
     for interval_pair in subsequence_intervals.intervals:
@@ -336,12 +359,12 @@ def build_word_transformation(subsequence_intervals: WordSubsequenceIntervals) -
         elif interval_pair.interval_b.empty:
             transform = DeleteTransformation(interval_pair.interval_a.length)
         else:
-            transform = EditTransformation(subsequence_b)
+            transform = EditTransformation(subsequence_b, len(subsequence_a))
         transforms.append(transform)
     return WordTransformationSequence(transforms)
 
-def analyze_word_pair(word_a: str, word_b: str) -> Tuple[WordTransformation, WordSubsequenceIntervals, LCSMatrix]:
+def analyze_word_pair(word_a: str, word_b: str) -> WordTransformation:
     lcs_matrix = LCSMatrix(word_a, word_b)
     subsequence_intervals = WordSubsequenceIntervals(lcs_matrix)
     transformation = build_word_transformation(subsequence_intervals)
-    return transformation, subsequence_intervals, lcs_matrix
+    return transformation
