@@ -149,58 +149,78 @@ class LCSMatrix:
         return self.__word_b
 
     @property
-    def matrix(self):
+    def matrix(self) -> Matrix:
         return self.__matrix
 
     @property
-    def edit_distance(self):
+    def edit_distance(self) -> int:
         return self.matrix[-1][-1]
 
 
-def get_common_subsequence_intervals(word_pair_lcs_matrix: LCSMatrix) -> List[IntervalPair]:
-    word_a = word_pair_lcs_matrix.word_a
-    word_b = word_pair_lcs_matrix.word_b
-    lcs_matrix = word_pair_lcs_matrix.matrix
-    intervals = []
-    interval_pair_builder = IntervalPairBuilder()
-    interval_pair_builder.set_end_a(len(word_a))
-    interval_pair_builder.set_end_b(len(word_b))
-    last_letter_common = word_a[-1] == word_b[-1]
-    if last_letter_common:
-        interval_pair_builder.set_common()
-    i, j = len(word_a), len(word_b)
-    while i > 0 and j > 0:
-        old_i = i
-        old_j = j
-        current_letter_common = word_a[i-1] == word_b[j-1]
-        if current_letter_common:
-            i = i-1
-            j = j-1
-        else:
-            # todo: prioritizing delete steps in draws might give more favorable results? but always?
-            # it splits "liegen" and "gelegen" into |  |l|i|egen|
-            #                                       |ge|l| |egen|
-            # instead of | li|egen|
-            #            |gel|egen|
-            step, _ = indmin([lcs_matrix[i-1][j], lcs_matrix[i - 1][j - 1], lcs_matrix[i][j-1]])
-            assert(step in range(0, 4))
-            if step == 0:  # delete step
-                i = i-1
-            elif step == 1:  # edit step
-                i = i-1
-                j = j-1
-            elif step == 2:  # insert step
-                j = j-1
-        if current_letter_common != last_letter_common:
-            interval_pair_builder.set_start_a(old_i)
-            interval_pair_builder.set_start_b(old_j)
-            intervals.append(interval_pair_builder.build())
-            interval_pair_builder.prepare_next()
-        last_letter_common = current_letter_common
-    interval_pair_builder.set_start_a(i)
-    interval_pair_builder.set_start_b(j)
-    intervals.append(interval_pair_builder.build())
-    if (i > 0 or j > 0) and last_letter_common:
-        interval_pair_builder.prepare_next()
+class WordSubsequenceIntervals:
+
+    def __init__(self, word_pair_lcs_matrix: LCSMatrix) -> None:
+        self.__word_a = word_pair_lcs_matrix.word_a
+        self.__word_b = word_pair_lcs_matrix.word_b
+        self.__intervals = self.__get_common_subsequence_intervals(word_pair_lcs_matrix)
+
+    @staticmethod
+    def __get_common_subsequence_intervals(word_pair_lcs_matrix: LCSMatrix) -> Tuple[IntervalPair]:
+        word_a = word_pair_lcs_matrix.word_a
+        word_b = word_pair_lcs_matrix.word_b
+        lcs_matrix = word_pair_lcs_matrix.matrix
+        intervals = []
+        interval_pair_builder = IntervalPairBuilder() # allows us to conveniently keep track of last interval borders and build intervals sequentially
+        interval_pair_builder.set_end_a(len(word_a))
+        interval_pair_builder.set_end_b(len(word_b))
+        last_letter_common = word_a[-1] == word_b[-1]
+        if last_letter_common:
+            interval_pair_builder.set_common()
+        i, j = len(word_a), len(word_b)
+        while i > 0 and j > 0:
+            old_i = i
+            old_j = j
+            current_letter_common = (word_a[i - 1] == word_b[j - 1])
+            if current_letter_common:
+                i = i - 1
+                j = j - 1
+            else:
+                # todo: prioritizing delete steps in draws might give more favorable results? but always?
+                # it splits "liegen" and "gelegen" into |  |l|i|egen|
+                #                                       |ge|l| |egen|
+                # instead of | li|egen|
+                #            |gel|egen|
+                step, _ = indmin([lcs_matrix[i - 1][j], lcs_matrix[i - 1][j - 1], lcs_matrix[i][j - 1]])
+                assert (step in range(0, 4))
+                if step == 0:  # delete step
+                    i = i - 1
+                elif step == 1:  # edit step
+                    i = i - 1
+                    j = j - 1
+                elif step == 2:  # insert step
+                    j = j - 1
+            if current_letter_common != last_letter_common:
+                interval_pair_builder.set_start_a(old_i)
+                interval_pair_builder.set_start_b(old_j)
+                intervals.append(interval_pair_builder.build())
+                interval_pair_builder.prepare_next()
+            last_letter_common = current_letter_common
+        interval_pair_builder.set_start_a(i)
+        interval_pair_builder.set_start_b(j)
         intervals.append(interval_pair_builder.build())
-    return list(reversed(intervals))
+        if (i > 0 or j > 0) and last_letter_common:
+            interval_pair_builder.prepare_next()
+            intervals.append(interval_pair_builder.build())
+        return tuple(reversed(intervals))
+
+    @property
+    def word_a(self) -> str:
+        return self.__word_a
+
+    @property
+    def word_b(self) -> str:
+        return self.__word_b
+
+    @property
+    def intervals(self) -> Tuple[IntervalPair]:
+        return self.__intervals

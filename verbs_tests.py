@@ -1,4 +1,5 @@
 import unittest
+from typing import Tuple
 
 import verbs
 
@@ -12,7 +13,7 @@ class VerbsTests(unittest.TestCase):
         self.assertEqual(lcs.matrix, expected)
         self.assertEqual(lcs.edit_distance, expected[-1][-1])
 
-    def test_build_lcs_matrix_liegen_gelegen(self):
+    def test_build_lcs_matrix_liegen_gelegen(self) -> None:
         word_a = "liegen"
         word_b = "gelegen"
         expected = ((0, 1, 2, 3, 4, 5, 6, 7),
@@ -24,7 +25,7 @@ class VerbsTests(unittest.TestCase):
                     (6, 5, 4, 4, 4, 4, 4, 3))
         self.__lcs_matrix_test_worker(word_a, word_b, expected)
 
-    def test_build_lcs_matrix_hallo_hello(self):
+    def test_build_lcs_matrix_hallo_hello(self) -> None:
         word_a = "hallo"
         word_b = "hello"
         expected = ((0, 1, 2, 3, 4, 5),
@@ -35,7 +36,7 @@ class VerbsTests(unittest.TestCase):
                     (5, 4, 4, 3, 2, 1))
         self.__lcs_matrix_test_worker(word_a, word_b, expected)
 
-    def test_build_lcs_matrix_asdf_asdf(self):
+    def test_build_lcs_matrix_asdf_asdf(self) -> None:
         word_a = "asdf"
         word_b = "asdf"
         expected = ((0, 1, 2, 3, 4),
@@ -45,7 +46,7 @@ class VerbsTests(unittest.TestCase):
                     (4, 3, 2, 1, 0))
         self.__lcs_matrix_test_worker(word_a, word_b, expected)
 
-    def test_build_lcs_matrix_fasd_asdf(self):
+    def test_build_lcs_matrix_fasd_asdf(self) -> None:
         word_a = "fasd"
         word_b = "asdf"
         expected = ((0, 1, 2, 3, 4),
@@ -55,7 +56,7 @@ class VerbsTests(unittest.TestCase):
                     (4, 3, 2, 1, 2))
         self.__lcs_matrix_test_worker(word_a, word_b, expected)
 
-    def test_build_lcs_matrix_halloh_hello(self):
+    def test_build_lcs_matrix_halloh_hello(self) -> None:
         word_a = "halloh"
         word_b = "hello"
         expected = ((0, 1, 2, 3, 4, 5),
@@ -67,23 +68,31 @@ class VerbsTests(unittest.TestCase):
                     (6, 5, 5, 4, 3, 2))
         self.__lcs_matrix_test_worker(word_a, word_b, expected)
 
+    def __lcs_intervals_test_worker(self, word_a: str, word_b: str, expected: Tuple[verbs.IntervalPair]) -> None:
+        intvs = verbs.WordSubsequenceIntervals(verbs.LCSMatrix(word_a, word_b))
+        self.assertEqual(intvs.word_a, word_a)
+        self.assertEqual(intvs.word_b, word_b)
+        self.assertEqual(intvs.intervals, expected)
+
     def test_build_intervals_liegen_gelegen(self):
-        interval_pairs = verbs.get_common_subsequence_intervals(verbs.LCSMatrix("liegen", "gelegen"))
+        word_a = "liegen"
+        word_b = "gelegen"
         #expected_interval_pairs = [verbs.IntervalPair(verbs.Interval(0, 2), verbs.Interval(0, 3), False),
         #                           verbs.IntervalPair(verbs.Interval(2, 6), verbs.Interval(3, 7), True)]
         # todo: is that a desirable output? probably not -> the above result is achieved with prioritizing edits or deletes over inserts
         # the lower result is achieved with prioritizing inserts in draws. is this always desirable? instead
         # of establishing an order, should the costs for steps in the lcs computation be adjusted?
-        expected_interval_pairs = [verbs.IntervalPair(verbs.Interval(0, 0), verbs.Interval(0, 2), False),
+        expected_interval_pairs = (verbs.IntervalPair(verbs.Interval(0, 0), verbs.Interval(0, 2), False),
                                    verbs.IntervalPair(verbs.Interval(0, 1), verbs.Interval(2, 3), True),
                                    verbs.IntervalPair(verbs.Interval(1, 2), verbs.Interval(3, 3), False),
-                                   verbs.IntervalPair(verbs.Interval(2, 6), verbs.Interval(3, 7), True)]
-        self.assertEqual(interval_pairs, expected_interval_pairs)
+                                   verbs.IntervalPair(verbs.Interval(2, 6), verbs.Interval(3, 7), True))
+        self.__lcs_intervals_test_worker(word_a, word_b, expected_interval_pairs)
 
     def test_build_intervals_halloh_hello(self):
-        interval_pairs = verbs.get_common_subsequence_intervals(verbs.LCSMatrix("halloh", "hello"))
-        expected_interval_pairs = [verbs.IntervalPair(verbs.Interval(0, 1), verbs.Interval(0, 1), True),
+        word_a = "halloh"
+        word_b = "hello"
+        expected_interval_pairs = (verbs.IntervalPair(verbs.Interval(0, 1), verbs.Interval(0, 1), True),
                                    verbs.IntervalPair(verbs.Interval(1, 2), verbs.Interval(1, 2), False),
                                    verbs.IntervalPair(verbs.Interval(2, 5), verbs.Interval(2, 5), True),
-                                   verbs.IntervalPair(verbs.Interval(5, 6), verbs.Interval(5, 5), False)]
-        self.assertEqual(interval_pairs, expected_interval_pairs)
+                                   verbs.IntervalPair(verbs.Interval(5, 6), verbs.Interval(5, 5), False))
+        self.__lcs_intervals_test_worker(word_a, word_b, expected_interval_pairs)
