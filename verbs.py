@@ -339,3 +339,9 @@ def build_word_transformation(subsequence_intervals: WordSubsequenceIntervals) -
             transform = EditTransformation(subsequence_b)
         transforms.append(transform)
     return WordTransformationSequence(transforms)
+
+def analyze_word_pair(word_a: str, word_b: str) -> Tuple[WordTransformation, WordSubsequenceIntervals, LCSMatrix]:
+    lcs_matrix = LCSMatrix(word_a, word_b)
+    subsequence_intervals = WordSubsequenceIntervals(lcs_matrix)
+    transformation = build_word_transformation(subsequence_intervals)
+    return transformation, subsequence_intervals, lcs_matrix
