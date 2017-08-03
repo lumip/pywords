@@ -1,7 +1,7 @@
 import sys
 import codecs
 from typing import List, Tuple, NamedTuple, TypeVar
-from collections import namedtuple
+import abc
 
 #training_set = []
 #with codecs.open("words.txt", 'r', encoding='utf-8') as f:
@@ -224,3 +224,68 @@ class WordSubsequenceIntervals:
     @property
     def intervals(self) -> Tuple[IntervalPair]:
         return self.__intervals
+
+
+class WordTransformation(metaclass=abc.ABCMeta):
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def check_length_raise_error(transformee: str, number_of_chars: int) -> None:
+        if len(transformee) < number_of_chars:
+            ValueError("Transformee <" + transformee + "> is too short")
+
+    @staticmethod
+    def snip_transformee(transformee: str, number_of_chars: int) -> str:
+        WordTransformation.check_length_raise_error(transformee, number_of_chars)
+        return transformee[number_of_chars:]
+
+    @abc.abstractmethod
+    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
+        pass
+
+class InsertTransformation(WordTransformation):
+
+    def __init__(self, insertee: str) -> None:
+        self.__insertee = insertee
+
+    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
+        return (transformed + self.__insertee), transformee
+
+class EditTransformation(WordTransformation):
+
+    def __init__(self, insertee: str) -> None:
+        self.__insertee = insertee
+
+    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
+        self.check_length_raise_error(transformee, len(self.__insertee))
+        return (transformed + self.__insertee), self.snip_transformee(transformee, len(self.__insertee))
+
+class DeleteTransformation(WordTransformation):
+
+    def __init__(self, number_of_chars: int) -> None:
+        self.__number_of_chars = number_of_chars
+
+    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
+        self.check_length_raise_error(transformee, self.__number_of_chars)
+        return transformed, self.snip_transformee(transformee, self.__number_of_chars)
+
+class SkipTransformation(WordTransformation):
+
+    def __init__(self, number_of_chars: int) -> None:
+        self.__number_of_chars = number_of_chars
+
+    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
+        self.check_length_raise_error(transformee, self.__number_of_chars)
+        return (transformed + transformee[:self.__number_of_chars]), self.snip_transformee(transformee, self.__number_of_chars)
+
+class WordTransformationSequence(WordTransformation):
+
+    def __init__(self, transformations: List[WordTransformation]) -> None:
+        self.__transformations = tuple(transformations)
+
+    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
+        for transformation in self.__transformations:
+            transformed, transformee = transformation.apply(transformed, transformee)
+        return transformed, transformee

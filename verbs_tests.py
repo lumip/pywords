@@ -96,3 +96,39 @@ class VerbsTests(unittest.TestCase):
                                    verbs.IntervalPair(verbs.Interval(2, 5), verbs.Interval(2, 5), True),
                                    verbs.IntervalPair(verbs.Interval(5, 6), verbs.Interval(5, 5), False))
         self.__lcs_intervals_test_worker(word_a, word_b, expected_interval_pairs)
+
+    def test_insert_transformation(self) -> None:
+        transf = verbs.InsertTransformation("bar")
+        transformed, transformee = transf.apply("foo", "2")
+        self.assertEqual(transformed, "foobar")
+        self.assertEqual(transformee, "2")
+
+    def test_edit_transformation(self) -> None:
+        transf = verbs.EditTransformation("ugo")
+        transformed, transformee = transf.apply("h", "ilbert")
+        self.assertEqual(transformed, "hugo")
+        self.assertEqual(transformee, "ert")
+
+    def test_delete_transformation(self) -> None:
+        transf = verbs.DeleteTransformation(2)
+        transformed, transformee = transf.apply("foo", "bar2")
+        self.assertEqual(transformed, "foo")
+        self.assertEqual(transformee, "r2")
+
+    def test_skip_transformation(self) -> None:
+        transf = verbs.SkipTransformation(2)
+        transformed, transformee = transf.apply("foo", "bar2")
+        self.assertEqual(transformed, "fooba")
+        self.assertEqual(transformee, "r2")
+
+    def test_transformation_sequence(self) -> None:
+        transf = verbs.WordTransformationSequence(
+            [verbs.SkipTransformation(1),
+             verbs.DeleteTransformation(5),
+             verbs.SkipTransformation(1),
+             verbs.EditTransformation("o"),
+             verbs.InsertTransformation("bar")]
+        )
+        transformed, transformee = transf.apply("", "function")
+        self.assertEqual(transformed, "foobar")
+        self.assertEqual(transformee, "")
