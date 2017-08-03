@@ -28,6 +28,8 @@ def indmin(values: List[T]) -> Tuple[int, T]:
 class Interval:
 
     def __init__(self, start: int, end: int) -> None:
+        if start > end:
+            raise ValueError("Cannot declare Interval with start after end")
         self.__start = start
         self.__end = end
 
@@ -39,15 +41,23 @@ class Interval:
     def end(self) -> int:
         return self.__end
 
-    def __eq__(self, other):
+    @property
+    def length(self) -> int:
+        return self.end - self.start
+
+    @property
+    def empty(self) -> bool:
+        return self.length <= 0
+
+    def __eq__(self, other) -> bool:
         if not isinstance(other, Interval):
             return False
         return other.start == self.start and other.end == self.end
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "[" + str(self.start) + ", " + str(self.end) + "]"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self) + "@" + str(id(self))
 
 
@@ -70,15 +80,15 @@ class IntervalPair:
     def common(self) -> bool:
         return self.__common
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         if not isinstance(other, IntervalPair):
             return False
         return other.interval_a == self.interval_a and other.interval_b == self.interval_b and other.common == self.common
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "(" + str(self.interval_a) + " : " + str(self.interval_b) + " : " + str(self.common) + ")"
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self) + "@" + str(id(self))
 
 
@@ -225,6 +235,10 @@ class WordSubsequenceIntervals:
     def intervals(self) -> Tuple[IntervalPair]:
         return self.__intervals
 
+    def get_subsequences(self, interval_pair: IntervalPair) -> Tuple[str, str]:
+        return (self.word_a[interval_pair.interval_a.start:interval_pair.interval_a.end],
+                self.word_b[interval_pair.interval_b.start:interval_pair.interval_b.end])
+
 
 class WordTransformation(metaclass=abc.ABCMeta):
 
@@ -253,6 +267,10 @@ class InsertTransformation(WordTransformation):
     def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
         return (transformed + self.__insertee), transformee
 
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, InsertTransformation): return False
+        return other.__insertee == self.__insertee
+
 class EditTransformation(WordTransformation):
 
     def __init__(self, insertee: str) -> None:
@@ -261,6 +279,10 @@ class EditTransformation(WordTransformation):
     def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
         self.check_length_raise_error(transformee, len(self.__insertee))
         return (transformed + self.__insertee), self.snip_transformee(transformee, len(self.__insertee))
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, EditTransformation): return False
+        return other.__insertee == self.__insertee
 
 class DeleteTransformation(WordTransformation):
 
@@ -271,6 +293,10 @@ class DeleteTransformation(WordTransformation):
         self.check_length_raise_error(transformee, self.__number_of_chars)
         return transformed, self.snip_transformee(transformee, self.__number_of_chars)
 
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, DeleteTransformation): return False
+        return other.__number_of_chars == self.__number_of_chars
+
 class SkipTransformation(WordTransformation):
 
     def __init__(self, number_of_chars: int) -> None:
@@ -279,6 +305,10 @@ class SkipTransformation(WordTransformation):
     def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
         self.check_length_raise_error(transformee, self.__number_of_chars)
         return (transformed + transformee[:self.__number_of_chars]), self.snip_transformee(transformee, self.__number_of_chars)
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, SkipTransformation): return False
+        return other.__number_of_chars == self.__number_of_chars
 
 class WordTransformationSequence(WordTransformation):
 
@@ -289,3 +319,23 @@ class WordTransformationSequence(WordTransformation):
         for transformation in self.__transformations:
             transformed, transformee = transformation.apply(transformed, transformee)
         return transformed, transformee
+
+    def __eq__(self, other) -> bool:
+        if not isinstance(other, WordTransformationSequence): return False
+        return other.__transformations == self.__transformations
+
+def build_word_transformation(subsequence_intervals: WordSubsequenceIntervals) -> WordTransformation:
+    transforms = []
+    for interval_pair in subsequence_intervals.intervals:
+        transform = None
+        subsequence_a, subsequence_b = subsequence_intervals.get_subsequences(interval_pair)
+        if interval_pair.common:
+            transform = SkipTransformation(interval_pair.interval_a.length)
+        elif interval_pair.interval_a.empty:
+            transform = InsertTransformation(subsequence_b)
+        elif interval_pair.interval_b.empty:
+            transform = DeleteTransformation(interval_pair.interval_a.length)
+        else:
+            transform = EditTransformation(subsequence_b)
+        transforms.append(transform)
+    return WordTransformationSequence(transforms)

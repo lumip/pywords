@@ -132,3 +132,17 @@ class VerbsTests(unittest.TestCase):
         transformed, transformee = transf.apply("", "function")
         self.assertEqual(transformed, "foobar")
         self.assertEqual(transformee, "")
+
+    def test_build_word_transformation(self) -> None:
+        subsequence_intervals = verbs.WordSubsequenceIntervals(verbs.LCSMatrix("liegen", "gelegen"))
+        transf = verbs.build_word_transformation(subsequence_intervals)
+        expected = verbs.WordTransformationSequence(
+            [verbs.InsertTransformation("ge"),
+             verbs.SkipTransformation(1),
+             verbs.DeleteTransformation(1),
+             verbs.SkipTransformation(4)]
+        )
+        self.assertEqual(transf, expected)
+        transformed, transformee = transf.apply("", "liegen")
+        self.assertEqual(transformed, "gelegen")
+        self.assertEqual(transformee, "")
