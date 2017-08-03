@@ -74,7 +74,7 @@ class VerbsTests(unittest.TestCase):
         self.assertEqual(intvs.word_b, word_b)
         self.assertEqual(intvs.intervals, expected)
 
-    def test_build_intervals_liegen_gelegen(self):
+    def test_build_intervals_liegen_gelegen(self) -> None:
         word_a = "liegen"
         word_b = "gelegen"
         #expected_interval_pairs = [verbs.IntervalPair(verbs.Interval(0, 2), verbs.Interval(0, 3), False),
@@ -88,7 +88,7 @@ class VerbsTests(unittest.TestCase):
                                    verbs.IntervalPair(verbs.Interval(2, 6), verbs.Interval(3, 7), True))
         self.__lcs_intervals_test_worker(word_a, word_b, expected_interval_pairs)
 
-    def test_build_intervals_halloh_hello(self):
+    def test_build_intervals_halloh_hello(self) -> None:
         word_a = "halloh"
         word_b = "hello"
         expected_interval_pairs = (verbs.IntervalPair(verbs.Interval(0, 1), verbs.Interval(0, 1), True),
