@@ -1,4 +1,4 @@
-from typing import List, Tuple, NamedTuple, TypeVar
+from typing import List, Tuple, TypeVar
 import abc
 from functools import reduce
 
@@ -234,7 +234,7 @@ class WordSubsequenceIntervals:
 
 class WordTransformation(metaclass=abc.ABCMeta):
 
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
     @staticmethod
@@ -251,81 +251,68 @@ class WordTransformation(metaclass=abc.ABCMeta):
     def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
         pass
 
-class InsertTransformation(WordTransformation):
-
-    def __init__(self, insertee: str) -> None:
-        self.__insertee = insertee
-
-    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
-        return (transformed + self.__insertee), transformee
-
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, InsertTransformation): return False
-        return other.__insertee == self.__insertee
-
-    def __str__(self) -> str:
-        return "+" + self.__insertee
-
-    def __hash__(self) -> int:
-        return hash(self.__insertee)
+    @abc.abstractmethod
+    def maybe_joinable(self, other: "WordTransformation") -> bool:
+        pass
 
 class EditTransformation(WordTransformation):
 
-    def __init__(self, insertee: str, number_of_chars_replaced: int) -> None:
+    def __init__(self, insertee: str, replaced: str) -> None:
         self.__insertee = insertee
-        self.__number_of_chars_replaced = number_of_chars_replaced
+        self.__replaced = replaced
 
     def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
-        self.check_length_raise_error(transformee, self.__number_of_chars_replaced)
-        return (transformed + self.__insertee), self.snip_transformee(transformee, self.__number_of_chars_replaced)
+        length = len(self.__replaced)
+        if transformee[0:length] != self.__replaced:
+            raise ValueError("Transformee <{}[..]> does not match the replacement pattern <{}>.".format(
+                        transformee[0:length],
+                        self.__replaced)
+            )
+        return (transformed + self.__insertee), self.snip_transformee(transformee, length)
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, EditTransformation): return False
-        return other.__insertee == self.__insertee and other.__number_of_chars_replaced == self.__number_of_chars_replaced
+        return other.__insertee == self.__insertee and other.__replaced == self.__replaced
 
     def __str__(self) -> str:
-        return "#" + str(self.__number_of_chars_replaced) + "/" + self.__insertee
+        return "#" + str(self.__replaced) + "/" + self.__insertee
 
     def __hash__(self) -> int:
-        return (29 * self.__number_of_chars_replaced) ^ hash(self.__insertee)
+        return hash(self.__replaced) ^ hash(self.__insertee)
 
-class DeleteTransformation(WordTransformation):
+    def maybe_joinable(self, other: WordTransformation) -> bool:
+        return self == other
 
-    def __init__(self, number_of_chars: int) -> None:
-        self.__number_of_chars = number_of_chars
+class SkipToTransformation(WordTransformation):
+
+    def __init__(self, pre_pattern: str, post_pattern: str) -> None:
+        self.__pre_pattern = pre_pattern
+        self.__post_pattern = post_pattern
 
     def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
-        self.check_length_raise_error(transformee, self.__number_of_chars)
-        return transformed, self.snip_transformee(transformee, self.__number_of_chars)
+        pre_length = len(self.__pre_pattern)
+        post_length = len(self.__post_pattern)
+        i = transformee.find(self.__pre_pattern + self.__post_pattern)
+        if i < 0:
+            raise ValueError("Transformee <{}[..]> does not match skipping pattern <{}|{}>.".format(
+                transformee[0:pre_length + post_length],
+                self.__pre_pattern,
+                self.__post_pattern)
+            )
+        return (transformed + transformee[:i] + self.__pre_pattern), (transformee[i + pre_length:])
 
     def __eq__(self, other) -> bool:
-        if not isinstance(other, DeleteTransformation): return False
-        return other.__number_of_chars == self.__number_of_chars
-
-    def __str__(self) -> str:
-        return "-" + str(self.__number_of_chars)
+        if not isinstance(other, SkipToTransformation): return False
+        return other.__pre_pattern == self.__pre_pattern and other.__post_pattern == self.__post_pattern
 
     def __hash__(self) -> int:
-        return 17 * self.__number_of_chars + 13
+        return hash(self.__pre_pattern) ^ hash(self.__post_pattern)
 
-class SkipTransformation(WordTransformation):
+    def maybe_joinable(self, other: WordTransformation) -> bool:
+        return isinstance(other, SkipToTransformation)
 
-    def __init__(self, number_of_chars: int) -> None:
-        self.__number_of_chars = number_of_chars
-
-    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
-        self.check_length_raise_error(transformee, self.__number_of_chars)
-        return (transformed + transformee[:self.__number_of_chars]), self.snip_transformee(transformee, self.__number_of_chars)
-
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, SkipTransformation): return False
-        return other.__number_of_chars == self.__number_of_chars
-
-    def __str__(self) -> str:
-        return ">" + str(self.__number_of_chars)
-
-    def __hash__(self) -> int:
-        return 23 * self.__number_of_chars + 11
+    def __repr__(self) -> str:
+        return ">{}|{}".format(self.__pre_pattern, self.__post_pattern)
 
 class WordTransformationSequence(WordTransformation):
 
@@ -347,19 +334,36 @@ class WordTransformationSequence(WordTransformation):
     def __hash__(self) -> int:
         return reduce(lambda a, b: hash(a) ^ hash(b), self.__transformations, 0)
 
+    def maybe_joinable(self, other: WordTransformation) -> bool:
+        if not isinstance(other, WordTransformationSequence): return False
+        if len(self.__transformations) != len(other.__transformations): return False
+        for i in range(len(self.__transformations)):
+            if self.__transformations[i] != other.__transformations[i]:
+                return False
+        return True
+
+def common_prefix(string_a: str, string_b: str) -> str:
+    i = 0
+    while i < len(string_a) and i < len(string_b) and string_a[i] == string_b[i]:
+        i += 1
+    return string_a[:i]
+
+def common_suffix(string_a: str, string_b: str) -> str:
+    return common_prefix(string_a[::-1], string_b[::-1])[::-1] # reverse, common_prefix, reverse
+
 def build_word_transformation(subsequence_intervals: WordSubsequenceIntervals) -> WordTransformation:
     transforms = []
-    for interval_pair in subsequence_intervals.intervals:
-        transform = None
-        subsequence_a, subsequence_b = subsequence_intervals.get_subsequences(interval_pair)
-        if interval_pair.common:
-            transform = SkipTransformation(interval_pair.interval_a.length)
-        elif interval_pair.interval_a.empty:
-            transform = InsertTransformation(subsequence_b)
-        elif interval_pair.interval_b.empty:
-            transform = DeleteTransformation(interval_pair.interval_a.length)
+    for i, interval_pair in enumerate(subsequence_intervals.intervals):
+        if (i + 1) < len(subsequence_intervals.intervals):
+            next_interval_pair = subsequence_intervals.intervals[i + 1]
         else:
-            transform = EditTransformation(subsequence_b, len(subsequence_a))
+            next_interval_pair = IntervalPair(Interval(0, 0), Interval(0, 0), True)
+        subsequence_a, subsequence_b = subsequence_intervals.get_subsequences(interval_pair)
+        next_subsequence_a, next_subsequence_b = subsequence_intervals.get_subsequences(next_interval_pair)
+        if interval_pair.common:
+            transform = SkipToTransformation(subsequence_a, next_subsequence_a)
+        else:
+            transform = EditTransformation(subsequence_b, subsequence_a)
         transforms.append(transform)
     return WordTransformationSequence(transforms)
 
