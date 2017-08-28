@@ -1,4 +1,4 @@
-from typing import List, Tuple, TypeVar
+from typing import List, Tuple, TypeVar, Optional
 import abc
 from functools import reduce
 
@@ -255,9 +255,13 @@ class WordTransformation(metaclass=abc.ABCMeta):
     def maybe_joinable(self, other: "WordTransformation") -> bool:
         pass
 
+    @abc.abstractmethod
+    def join(self, other: "WordTransformation") -> "WordTransformation":
+        pass
+
 class EditTransformation(WordTransformation):
 
-    def __init__(self, insertee: str, replaced: str) -> None:
+    def __init__(self, insertee: str, replaced: str) -> None: # todo: swap arguments
         self.__insertee = insertee
         self.__replaced = replaced
 
@@ -282,6 +286,12 @@ class EditTransformation(WordTransformation):
 
     def maybe_joinable(self, other: WordTransformation) -> bool:
         return self == other
+
+    def join(self, other: WordTransformation) -> WordTransformation:
+        if not self.maybe_joinable(other):
+            raise ValueError("These WordTransformation objects cannot be joined.")
+        else:
+            return self
 
 class SkipToTransformation(WordTransformation):
 
@@ -314,6 +324,14 @@ class SkipToTransformation(WordTransformation):
     def __repr__(self) -> str:
         return ">{}|{}".format(self.__pre_pattern, self.__post_pattern)
 
+    def join(self, other: WordTransformation) -> WordTransformation:
+        if not self.maybe_joinable(other):
+            raise ValueError("These WordTransformation objects cannot be joined.")
+        common_pre_pattern = common_suffix(self.__pre_pattern, other.__pre_pattern)
+        common_post_pattern = common_prefix(self.__post_pattern, other.__post_pattern)
+        return SkipToTransformation(common_pre_pattern, common_post_pattern)
+
+
 class WordTransformationSequence(WordTransformation):
 
     def __init__(self, transformations: List[WordTransformation]) -> None:
@@ -338,9 +356,17 @@ class WordTransformationSequence(WordTransformation):
         if not isinstance(other, WordTransformationSequence): return False
         if len(self.__transformations) != len(other.__transformations): return False
         for i in range(len(self.__transformations)):
-            if self.__transformations[i] != other.__transformations[i]:
+            if not self.__transformations[i].maybe_joinable(other.__transformations[i]):
                 return False
         return True
+
+    def join(self, other: WordTransformation) -> WordTransformation:
+        if not isinstance(other, WordTransformationSequence) or len(self.__transformations) != len(other.__transformations):
+            raise ValueError("These WordTransformation objects cannot be joined.")
+        joined_transforms = []
+        for i in range(len(self.__transformations)):
+            joined_transforms.append(self.__transformations[i].join(other.__transformations[i]))
+        return WordTransformationSequence(joined_transforms)
 
 def common_prefix(string_a: str, string_b: str) -> str:
     i = 0
