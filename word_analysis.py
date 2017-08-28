@@ -261,9 +261,9 @@ class WordTransformation(metaclass=abc.ABCMeta):
 
 class EditTransformation(WordTransformation):
 
-    def __init__(self, insertee: str, replaced: str) -> None: # todo: swap arguments
-        self.__insertee = insertee
+    def __init__(self, replaced: str, insertee: str) -> None:
         self.__replaced = replaced
+        self.__insertee = insertee
 
     def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
         length = len(self.__replaced)
@@ -389,7 +389,7 @@ def build_word_transformation(subsequence_intervals: WordSubsequenceIntervals) -
         if interval_pair.common:
             transform = SkipToTransformation(subsequence_a, next_subsequence_a)
         else:
-            transform = EditTransformation(subsequence_b, subsequence_a)
+            transform = EditTransformation(subsequence_a, subsequence_b)
         transforms.append(transform)
     return WordTransformationSequence(transforms)
 

@@ -39,9 +39,9 @@ class VerbsTests(unittest.TestCase):
         subsequence_intervals = word_analysis.WordSubsequenceIntervals(word_analysis.LCSMatrix("liegen", "gelegen"))
         transf = word_analysis.build_word_transformation(subsequence_intervals)
         expected = word_analysis.WordTransformationSequence(
-            [word_analysis.EditTransformation("ge", ""),
-             word_analysis.SkipToTransformation('l', 'i'),
-             word_analysis.EditTransformation('', "i"),
+            [word_analysis.EditTransformation("", "ge"),
+             word_analysis.SkipToTransformation("l", 'i'),
+             word_analysis.EditTransformation("i", ""),
              word_analysis.SkipToTransformation("egen", "")]
         )
         self.assertEqual(transf, expected)
@@ -53,9 +53,9 @@ class VerbsTests(unittest.TestCase):
         subsequence_intervals = word_analysis.WordSubsequenceIntervals(word_analysis.LCSMatrix("schmieren", "geschmiert"))
         transf = word_analysis.build_word_transformation(subsequence_intervals)
         expected = word_analysis.WordTransformationSequence(
-            [word_analysis.EditTransformation("ge", ""),
+            [word_analysis.EditTransformation("", "ge"),
              word_analysis.SkipToTransformation("schmier", "en"),
-             word_analysis.EditTransformation("t", "en")]
+             word_analysis.EditTransformation("en", "t")]
         )
         self.assertEqual(transf, expected)
         transformed, transformee = transf.apply("", "schmieren")
@@ -143,25 +143,25 @@ class LCSMatrixTests(unittest.TestCase):
 class EditTransformationTests(unittest.TestCase):
 
     def test_apply_insert(self) -> None:
-        transf = word_analysis.EditTransformation("bar", "")
+        transf = word_analysis.EditTransformation("", "bar")
         transformed, transformee = transf.apply("foo", "2")
         self.assertEqual(transformed, "foobar")
         self.assertEqual(transformee, "2")
 
     def test_apply_match(self) -> None:
-        transf = word_analysis.EditTransformation("ugo", "il")
+        transf = word_analysis.EditTransformation("il", "ugo")
         transformed, transformee = transf.apply("h", "ilbert")
         self.assertEqual(transformed, "hugo")
         self.assertEqual(transformee, "bert")
 
     def test_apply_delete(self) -> None:
-        transf = word_analysis.EditTransformation('', "ba")
+        transf = word_analysis.EditTransformation("ba", "")
         transformed, transformee = transf.apply("foo", "bar2")
         self.assertEqual(transformed, "foo")
         self.assertEqual(transformee, "r2")
 
     def test_apply_unmatch_(self) -> None:
-        transf = word_analysis.EditTransformation("hugo", "egon")
+        transf = word_analysis.EditTransformation("egon", "hugo")
         self.assertRaises(ValueError, transf.apply, "alf", "hugabo")
 
     def test_maybe_joinable(self) -> None:
@@ -289,18 +289,18 @@ class TransformationSequenceTests(unittest.TestCase):
     def test_apply(self) -> None:
         transf = word_analysis.WordTransformationSequence(
             [word_analysis.SkipToTransformation("f", "uncti"),
-             word_analysis.EditTransformation('', "uncti"),
+             word_analysis.EditTransformation("uncti", ""),
              word_analysis.SkipToTransformation("o", "n"),
-             word_analysis.EditTransformation("o", "n"),
-             word_analysis.EditTransformation("bar", "")]
+             word_analysis.EditTransformation("n", "o"),
+             word_analysis.EditTransformation("", "bar")]
         )
         transformed, transformee = transf.apply("", "function")
         self.assertEqual(transformed, "foobar")
         self.assertEqual(transformee, "")
 
     def test_maybe_joinable(self) -> None:
-        subt1 = word_analysis.EditTransformation("ge", "")
-        subt1f = word_analysis.EditTransformation("hugo", "")
+        subt1 = word_analysis.EditTransformation("", "ge")
+        subt1f = word_analysis.EditTransformation("", "hugo")
         subt2a = word_analysis.SkipToTransformation("foo", "bar")
         subt2b = word_analysis.SkipToTransformation("o", "bah")
         transf1 = word_analysis.WordTransformationSequence([subt1, subt2a])
@@ -327,8 +327,8 @@ class TransformationSequenceTests(unittest.TestCase):
         self.assertFalse(transf1.maybe_joinable(subt2a))
 
     def test_equals(self) -> None:
-        subt1 = word_analysis.EditTransformation("ge", "")
-        subt1f = word_analysis.EditTransformation("hugo", "")
+        subt1 = word_analysis.EditTransformation("", "ge")
+        subt1f = word_analysis.EditTransformation("", "hugo")
         subt2a = word_analysis.SkipToTransformation("foo", "bar")
         subt2b = word_analysis.SkipToTransformation("o", "bah")
         transf1 = word_analysis.WordTransformationSequence([subt1, subt2a])
@@ -352,8 +352,8 @@ class TransformationSequenceTests(unittest.TestCase):
         raise NotImplementedError()
 
     def test_join_unjoinable(self) -> None:
-        subt1 = word_analysis.EditTransformation("ge", "")
-        subt1f = word_analysis.EditTransformation("hugo", "")
+        subt1 = word_analysis.EditTransformation("", "ge")
+        subt1f = word_analysis.EditTransformation("", "hugo")
         subt2a = word_analysis.SkipToTransformation("foo", "bar")
         transf1 = word_analysis.WordTransformationSequence([subt1, subt2a])
         transf3 = word_analysis.WordTransformationSequence([subt1f, subt2a])
@@ -368,14 +368,14 @@ class TransformationSequenceTests(unittest.TestCase):
             transf5.join(transf1)
 
     def test_join(self) -> None:
-        subt1 = word_analysis.EditTransformation("ge", "")
+        subt1 = word_analysis.EditTransformation("", "ge")
         subt2a = word_analysis.SkipToTransformation("foo", "bar")
         subt2b = word_analysis.SkipToTransformation("o", "bah")
         transf1 = word_analysis.WordTransformationSequence([subt1, subt2a])
         transf11 = word_analysis.WordTransformationSequence([subt1, subt2a])
         transf2 = word_analysis.WordTransformationSequence([subt1, subt2b])
         expected = word_analysis.WordTransformationSequence([
-            word_analysis.EditTransformation("ge", ""),
+            word_analysis.EditTransformation("", "ge"),
             word_analysis.SkipToTransformation("o", "ba")
         ])
         joined1 = transf1.join(transf2)
