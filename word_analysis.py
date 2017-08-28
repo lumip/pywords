@@ -248,8 +248,12 @@ class WordTransformation(metaclass=abc.ABCMeta):
         return transformee[number_of_chars:]
 
     @abc.abstractmethod
-    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
+    def apply_step(self, transformed: str, transformee: str) -> Tuple[str, str]:
         pass
+
+    def apply(self, transformee: str) -> str:
+        transformed, _ = self.apply_step("", transformee)
+        return transformed
 
     @abc.abstractmethod
     def maybe_joinable(self, other: "WordTransformation") -> bool:
@@ -265,7 +269,7 @@ class EditTransformation(WordTransformation):
         self.__replaced = replaced
         self.__insertee = insertee
 
-    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
+    def apply_step(self, transformed: str, transformee: str) -> Tuple[str, str]:
         length = len(self.__replaced)
         if transformee[0:length] != self.__replaced:
             raise ValueError("Transformee <{}[..]> does not match the replacement pattern <{}>.".format(
@@ -299,7 +303,7 @@ class SkipToTransformation(WordTransformation):
         self.__pre_pattern = pre_pattern
         self.__post_pattern = post_pattern
 
-    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
+    def apply_step(self, transformed: str, transformee: str) -> Tuple[str, str]:
         pre_length = len(self.__pre_pattern)
         post_length = len(self.__post_pattern)
         i = transformee.find(self.__pre_pattern + self.__post_pattern)
@@ -337,9 +341,9 @@ class WordTransformationSequence(WordTransformation):
     def __init__(self, transformations: List[WordTransformation]) -> None:
         self.__transformations = tuple(transformations)
 
-    def apply(self, transformed: str, transformee: str) -> Tuple[str, str]:
+    def apply_step(self, transformed: str, transformee: str) -> Tuple[str, str]:
         for transformation in self.__transformations:
-            transformed, transformee = transformation.apply(transformed, transformee)
+            transformed, transformee = transformation.apply_step(transformed, transformee)
         return transformed, transformee
 
     def __eq__(self, other) -> bool:
