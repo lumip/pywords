@@ -2,7 +2,8 @@ import sys
 import codecs
 from typing import TypeVar, Tuple, List, Set
 #import tensorflow as tf
-#from sklearn.tree import DecisionTreeClassifier
+from sklearn.tree import DecisionTreeClassifier, export_graphviz
+from sklearn.feature_extraction import DictVectorizer
 
 import word_analysis as ana
 from cluster_set import ClusterSet
@@ -52,10 +53,12 @@ with codecs.open("words2.txt", 'r', encoding='utf-8') as f:
         #word_pairs.add(tuple(part.strip() for part in line.split(",")))
         word_pairs.append(tuple(part.strip() for part in line.split(",")))
 
+print("... read {} word pairs".format(len(word_pairs)))
+
 print("Analyzing training word pairs...")
 training_set = [TrainingSetElement(pair[0], pair[1]) for pair in word_pairs]
 
-print(str(training_set))
+#print(str(training_set))
 
 class Cluster:
 
@@ -87,7 +90,7 @@ class Cluster:
         return self.__transformation
 
     @property
-    def item(self):
+    def items(self):
         return self.__items.copy()
 
     def __repr__(self) -> str:
@@ -104,7 +107,48 @@ for training_instance in training_set:
     if not found_cluster:
         clusters.append(Cluster(training_instance))
 
-print(clusters)
+print("... split word pairs into {} clusters of similar transformations".format(len(clusters)))
+#print(clusters)
+
+# todo: [done] make transformations invariant to skip lengths (same replacements and inserts -> covered by same transformation for different skip lengths)?
+# todo: use ML to discover similar rules for the above instead of hardcoding?
+
+print("Extracting features for training...")
+
+x_data = []
+c_data = []
+for c, cluster in enumerate(clusters):
+    for training_instance in cluster.items:
+        features = dict()
+        word = training_instance.word_a
+        length = len(word)
+        features["length"] = length
+        for i in range(length):
+            features[i] = word[i]
+            features[i - length] = word[i]
+        x_data.append(features)
+        c_data.append(c)
+
+#print(x_data)
+vectorizer = DictVectorizer()
+x_data = vectorizer.fit_transform(x_data)
+
+print("... extracted {} features for training the classifier".format(len(vectorizer.get_feature_names())))
+
+print("Training classifier....")
+classifier = DecisionTreeClassifier(criterion="entropy")
+classifier.fit(x_data, c_data)
+
+import graphviz
+class_names = list(str(cluster.transformation) for cluster in clusters)
+dot_data = export_graphviz(classifier,
+                           out_file=None,
+                           feature_names=vectorizer.get_feature_names(),
+                           class_names=class_names,
+                           filled=True, rounded=True)
+graph = graphviz.Source(dot_data)
+graph.render("classifier")
+
 
 # print("Clustering training word pairs by local transformations...")
 # clusters = ClusterSet()
@@ -113,6 +157,3 @@ print(clusters)
 #
 # clusters = clusters.get_clusters()
 # print(clusters)
-
-# todo: [done] make transformations invariant to skip lengths (same replacements and inserts -> covered by same transformation for different skip lengths)?
-# todo: use ML to discover similar rules for the above instead of hardcoding?
