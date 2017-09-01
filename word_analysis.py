@@ -265,37 +265,51 @@ class WordTransformation(metaclass=abc.ABCMeta):
 
 class EditTransformation(WordTransformation):
 
-    def __init__(self, replaced: str, insertee: str) -> None:
+    def __init__(self, pre_pattern: str, replaced: str, insertee: str) -> None:
+        self.__pre_pattern = pre_pattern
         self.__replaced = replaced
         self.__insertee = insertee
 
     def apply_step(self, transformed: str, transformee: str) -> Tuple[str, str]:
-        length = len(self.__replaced)
-        if transformee[0:length] != self.__replaced:
-            raise ValueError("Transformee <{}[..]> does not match the replacement pattern <{}>.".format(
-                        transformee[0:length],
+        length = len(self.__pre_pattern) + len(self.__replaced)
+        i = transformee.find(self.__pre_pattern + self.__replaced)
+        if i < 0:
+            raise ValueError("Transformee <{}> does not match replacement pattern <{}|{}>.".format(
+                        transformee,
+                        self.__pre_pattern,
                         self.__replaced)
             )
-        return (transformed + self.__insertee), self.snip_transformee(transformee, length)
+        return (transformed + transformee[:i] + self.__pre_pattern + self.__insertee), transformee[i + length:]
 
     def __eq__(self, other) -> bool:
         if not isinstance(other, EditTransformation): return False
-        return other.__insertee == self.__insertee and other.__replaced == self.__replaced
+        return (
+            other.__pre_pattern == self.__pre_pattern and
+            other.__insertee == self.__insertee and
+            other.__replaced == self.__replaced
+        )
 
     def __str__(self) -> str:
-        return "#" + str(self.__replaced) + "/" + self.__insertee
+        return ">{}#{}/{}".format(self.__pre_pattern, self.__replaced, self.__insertee)
 
-    def __hash__(self) -> int:
-        return hash(self.__replaced) ^ hash(self.__insertee)
+#    def __hash__(self) -> int:
+#        return hash(self.__replaced) ^ hash(self.__insertee)
 
     def maybe_joinable(self, other: WordTransformation) -> bool:
-        return self == other
+        if not isinstance(other, EditTransformation): return False
+        if len(self.__pre_pattern) < len(other.__pre_pattern):
+            return other.maybe_joinable(self)
+        return (
+            other.__replaced == self.__replaced and
+            other.__insertee == self.__insertee
+        )
 
     def join(self, other: WordTransformation) -> WordTransformation:
         if not self.maybe_joinable(other):
             raise ValueError("These WordTransformation objects cannot be joined.")
         else:
-            return self
+            common_pre_pattern = common_suffix(self.__pre_pattern, other.__pre_pattern)
+            return EditTransformation(common_pre_pattern, self.__replaced, self.__insertee)
 
 class SkipToTransformation(WordTransformation):
 
@@ -384,18 +398,20 @@ def common_suffix(string_a: str, string_b: str) -> str:
 
 def build_word_transformation(subsequence_intervals: WordSubsequenceIntervals) -> WordTransformation:
     transforms = []
-    for i, interval_pair in enumerate(subsequence_intervals.intervals):
-        if (i + 1) < len(subsequence_intervals.intervals):
-            next_interval_pair = subsequence_intervals.intervals[i + 1]
-        else:
-            next_interval_pair = IntervalPair(Interval(0, 0), Interval(0, 0), True)
+    pre_pattern = ""
+    for interval_pair in subsequence_intervals.intervals:
         subsequence_a, subsequence_b = subsequence_intervals.get_subsequences(interval_pair)
-        next_subsequence_a, next_subsequence_b = subsequence_intervals.get_subsequences(next_interval_pair)
         if interval_pair.common:
-            transform = SkipToTransformation(subsequence_a, next_subsequence_a)
+            pre_pattern = subsequence_a
         else:
-            transform = EditTransformation(subsequence_a, subsequence_b)
-        transforms.append(transform)
+            transform = EditTransformation(pre_pattern, subsequence_a, subsequence_b)
+            transforms.append(transform)
+            pre_pattern = ""
+            # pre_pattern need not be cleared as it is always overwritten in the next step
+
+    # temporary:
+    if pre_pattern != "":
+        transforms.append(EditTransformation(pre_pattern, "", ""))
     return WordTransformationSequence(transforms)
 
 def analyze_word_pair(word_a: str, word_b: str) -> WordTransformation:
