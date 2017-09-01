@@ -8,6 +8,7 @@ from sklearn.feature_extraction import DictVectorizer
 import word_analysis as ana
 from cluster_set import ClusterSet
 
+# todo: split Korean (or other) compound runes into single character runes by detecting and preprocessing
 class TrainingSetElement:
 
     def __init__(self, word_a: str, word_b: str) -> None:
@@ -46,11 +47,9 @@ class TrainingSetElement:
         return "(" + self.word_a + ", " + self.word_b + ", " + str(self.transformation) + ")"
 
 print("Loading training word pairs...")
-#word_pairs = set()
 word_pairs = []
-with codecs.open("words2.txt", 'r', encoding='utf-8') as f:
+with codecs.open("words_kor.txt", 'r', encoding='utf-8') as f:
     for line in f.readlines():
-        #word_pairs.add(tuple(part.strip() for part in line.split(",")))
         word_pairs.append(tuple(part.strip() for part in line.split(",")))
 
 print("... read {} word pairs".format(len(word_pairs)))
@@ -108,7 +107,7 @@ for training_instance in training_set:
         clusters.append(Cluster(training_instance))
 
 print("... split word pairs into {} clusters of similar transformations".format(len(clusters)))
-#print(clusters)
+print(clusters)
 
 # todo: [done] make transformations invariant to skip lengths (same replacements and inserts -> covered by same transformation for different skip lengths)?
 # todo: use ML to discover similar rules for the above instead of hardcoding?
@@ -139,14 +138,19 @@ print("Training classifier....")
 classifier = DecisionTreeClassifier(criterion="entropy")
 classifier.fit(x_data, c_data)
 
+print("Creating tree visualization...")
+
 import graphviz
 class_names = list(str(cluster.transformation) for cluster in clusters)
+#class_names = list("{} : {} -> {}".format(str(rule), training_instance.word_a, training_instance.word_b) for rule, training_instance in ((cluster.transformation, cluster.items.pop()) for cluster in clusters))
 dot_data = export_graphviz(classifier,
                            out_file=None,
                            feature_names=vectorizer.get_feature_names(),
                            class_names=class_names,
-                           filled=True, rounded=True)
+                           filled=True,
+                           rounded=True)
 graph = graphviz.Source(dot_data)
+graph.format = "svg"
 graph.render("classifier")
 
 
