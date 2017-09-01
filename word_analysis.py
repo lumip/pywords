@@ -336,6 +336,7 @@ class SkipToTransformation(WordTransformation):
         return SkipToTransformation(common_pre_pattern, common_post_pattern)
 
 
+#todo: can remove SkipToTransformation completely? as of now, post-pattern should always be equal to replaced-pattern in EditTransformation (verify!).. this can then skip until there as well
 class WordTransformationSequence(WordTransformation):
 
     def __init__(self, transformations: List[WordTransformation]) -> None:

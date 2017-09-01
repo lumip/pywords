@@ -326,6 +326,34 @@ class TransformationSequenceTests(unittest.TestCase):
         self.assertFalse(transf1.maybe_joinable(subt1))
         self.assertFalse(transf1.maybe_joinable(subt2a))
 
+    def test_maybe_joinable_different_lengths(self) -> None:
+        # todo: support for this needs to be implemented
+        subt1 = word_analysis.EditTransformation("", "foo")
+        subt2 = word_analysis.SkipToTransformation("asdf", "foo")
+        transf1 = word_analysis.WordTransformationSequence([subt1])
+        transf2 = word_analysis.WordTransformationSequence([subt2, subt1])
+        self.assertTrue(transf1.maybe_joinable(transf2))
+        self.assertTrue(transf2.maybe_joinable(transf1))
+
+    def test_maybe_joinable_single_elements(self) -> None:
+        # todo: support for this needs to be implemented
+        # todo: needs tests for vice versa
+        subt1 = word_analysis.EditTransformation("foo", "bar")
+        subt2 = word_analysis.SkipToTransformation("bar", "foo")
+        transf1 = word_analysis.WordTransformationSequence([subt1])
+        transf2 = word_analysis.WordTransformationSequence([subt2])
+        self.assertTrue(transf1.maybe_joinable(subt1))
+        self.assertTrue(transf2.maybe_joinable(subt2))
+        # allow SkipToTransformation objects to be a prefix or postfix in a sequence
+        transf3 = word_analysis.WordTransformationSequence([subt2, subt1])
+        self.assertTrue(transf3.maybe_joinable(subt1))
+        transf4 = word_analysis.WordTransformationSequence([subt1, subt2])
+        self.assertTrue(transf4.maybe_joinable(subt1))
+        # do not allow EditTransformation objects to be a prefix or postfix in a sequence
+        self.assertFalse(transf3.maybe_joinable(subt2))
+        self.assertFalse(transf4.maybe_joinable(subt2))
+
+
     def test_equals(self) -> None:
         subt1 = word_analysis.EditTransformation("", "ge")
         subt1f = word_analysis.EditTransformation("", "hugo")
