@@ -296,7 +296,10 @@ class EditTransformation(WordTransformation):
 #        return hash(self.__replaced) ^ hash(self.__insertee)
 
     def maybe_joinable(self, other: WordTransformation) -> bool:
-        if not isinstance(other, EditTransformation): return False
+        if not isinstance(other, WordTransformation): return False
+        if isinstance(other, WordTransformationSequence):
+            return other.maybe_joinable(self)
+
         if len(self.__pre_pattern) < len(other.__pre_pattern):
             return other.maybe_joinable(self)
         return (
@@ -308,6 +311,8 @@ class EditTransformation(WordTransformation):
         if not self.maybe_joinable(other):
             raise ValueError("These WordTransformation objects cannot be joined.")
         else:
+            if isinstance(other, WordTransformationSequence):
+                return other.join(self)
             common_pre_pattern = common_suffix(self.__pre_pattern, other.__pre_pattern)
             return EditTransformation(common_pre_pattern, self.__replaced, self.__insertee)
 
@@ -332,7 +337,10 @@ class WordTransformationSequence(WordTransformation):
         return reduce(lambda a, b: hash(a) ^ hash(b), self.__transformations, 0)
 
     def maybe_joinable(self, other: WordTransformation) -> bool:
-        if not isinstance(other, WordTransformationSequence): return False
+        if not isinstance(other, WordTransformation): return False
+        if not isinstance(other, WordTransformationSequence):
+            other = WordTransformationSequence([other])
+
         if len(self.__transformations) != len(other.__transformations): return False
         for i in range(len(self.__transformations)):
             if not self.__transformations[i].maybe_joinable(other.__transformations[i]):
@@ -340,8 +348,10 @@ class WordTransformationSequence(WordTransformation):
         return True
 
     def join(self, other: WordTransformation) -> WordTransformation:
-        if not isinstance(other, WordTransformationSequence) or len(self.__transformations) != len(other.__transformations):
+        if not self.maybe_joinable(other):
             raise ValueError("These WordTransformation objects cannot be joined.")
+        if not isinstance(other, WordTransformationSequence):
+            other = WordTransformationSequence([other])
         joined_transforms = []
         for i in range(len(self.__transformations)):
             joined_transforms.append(self.__transformations[i].join(other.__transformations[i]))
@@ -369,7 +379,7 @@ def build_word_transformation(subsequence_intervals: WordSubsequenceIntervals) -
             pre_pattern = ""
             # pre_pattern need not be cleared as it is always overwritten in the next step
 
-    # temporary:
+    # temporary: jump over rest of the word if no more edits in the end
     if pre_pattern != "":
         transforms.append(EditTransformation(pre_pattern, "", ""))
     return WordTransformationSequence(transforms)
