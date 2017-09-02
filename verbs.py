@@ -1,12 +1,10 @@
-import sys
 import codecs
-from typing import TypeVar, Tuple, List, Set
-#import tensorflow as tf
+from typing import Set
 from sklearn.tree import DecisionTreeClassifier, export_graphviz
 from sklearn.feature_extraction import DictVectorizer
 
 import word_analysis as ana
-from cluster_set import ClusterSet
+import input_parsing as par
 
 # todo: split Korean (or other) compound runes into single character runes by detecting and preprocessing
 class TrainingSetElement:
@@ -46,11 +44,13 @@ class TrainingSetElement:
     def __repr__(self) -> str:
         return "(" + self.word_a + ", " + self.word_b + ", " + str(self.transformation) + ")"
 
+input_processor = par.CombinedProcessor([par.HangeulComposer()])
+
 print("Loading training word pairs...")
 word_pairs = []
 with codecs.open("words_kor.txt", 'r', encoding='utf-8') as f:
     for line in f.readlines():
-        word_pairs.append(tuple(part.strip() for part in line.split(",")))
+        word_pairs.append(tuple(input_processor.process_input(part.strip()) for part in line.split(",")))
 
 print("... read {} word pairs".format(len(word_pairs)))
 
@@ -141,7 +141,7 @@ classifier.fit(x_data, c_data)
 print("Creating tree visualization...")
 
 import graphviz
-class_names = list(str(cluster.transformation) for cluster in clusters)
+class_names = list(input_processor.process_output(str(cluster.transformation)) for cluster in clusters)
 #class_names = list("{} : {} -> {}".format(str(rule), training_instance.word_a, training_instance.word_b) for rule, training_instance in ((cluster.transformation, cluster.items.pop()) for cluster in clusters))
 dot_data = export_graphviz(classifier,
                            out_file=None,
