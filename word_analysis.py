@@ -311,46 +311,6 @@ class EditTransformation(WordTransformation):
             common_pre_pattern = common_suffix(self.__pre_pattern, other.__pre_pattern)
             return EditTransformation(common_pre_pattern, self.__replaced, self.__insertee)
 
-class SkipToTransformation(WordTransformation):
-
-    def __init__(self, pre_pattern: str, post_pattern: str) -> None:
-        self.__pre_pattern = pre_pattern
-        self.__post_pattern = post_pattern
-
-    def apply_step(self, transformed: str, transformee: str) -> Tuple[str, str]:
-        pre_length = len(self.__pre_pattern)
-        post_length = len(self.__post_pattern)
-        i = transformee.find(self.__pre_pattern + self.__post_pattern)
-        if i < 0:
-            raise ValueError("Transformee <{}[..]> does not match skipping pattern <{}|{}>.".format(
-                transformee[0:pre_length + post_length],
-                self.__pre_pattern,
-                self.__post_pattern)
-            )
-        return (transformed + transformee[:i] + self.__pre_pattern), (transformee[i + pre_length:])
-
-    def __eq__(self, other) -> bool:
-        if not isinstance(other, SkipToTransformation): return False
-        return other.__pre_pattern == self.__pre_pattern and other.__post_pattern == self.__post_pattern
-
-    def __hash__(self) -> int:
-        return hash(self.__pre_pattern) ^ hash(self.__post_pattern)
-
-    def maybe_joinable(self, other: WordTransformation) -> bool:
-        return isinstance(other, SkipToTransformation)
-
-    def __repr__(self) -> str:
-        return ">{}|{}".format(self.__pre_pattern, self.__post_pattern)
-
-    def join(self, other: WordTransformation) -> WordTransformation:
-        if not self.maybe_joinable(other):
-            raise ValueError("These WordTransformation objects cannot be joined.")
-        common_pre_pattern = common_suffix(self.__pre_pattern, other.__pre_pattern)
-        common_post_pattern = common_prefix(self.__post_pattern, other.__post_pattern)
-        return SkipToTransformation(common_pre_pattern, common_post_pattern)
-
-
-#todo: can remove SkipToTransformation completely? as of now, post-pattern should always be equal to replaced-pattern in EditTransformation (verify!).. this can then skip until there as well
 class WordTransformationSequence(WordTransformation):
 
     def __init__(self, transformations: List[WordTransformation]) -> None:
