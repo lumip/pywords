@@ -289,8 +289,17 @@ class EditTransformation(WordTransformation):
             other.__replaced == self.__replaced
         )
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         return ">{}#{}/{}".format(self.__pre_pattern, self.__replaced, self.__insertee)
+
+    def __str__(self) -> str:
+        find_part = ""
+        if len(self.__pre_pattern + self.__replaced) > 0:
+            find_part = "find ~{0}{1} and "
+        replace_part = "add {2}"
+        if len(self.__replaced) > 0:
+            replace_part = "replace {1} with {2}"
+        return (find_part + replace_part).format(self.__pre_pattern, self.__replaced, self.__insertee)
 
 #    def __hash__(self) -> int:
 #        return hash(self.__replaced) ^ hash(self.__insertee)
@@ -330,8 +339,11 @@ class WordTransformationSequence(WordTransformation):
         if not isinstance(other, WordTransformationSequence): return False
         return other.__transformations == self.__transformations
 
+    def __str__(self) -> str:
+        return str.join(", then ", (str(transf) for transf in self.__transformations))
+
     def __repr__(self) -> str:
-        return str.join("", (str(transf) for transf in self.__transformations))
+        return str.join("", (repr(transf) for transf in self.__transformations))
 
     def __hash__(self) -> int:
         return reduce(lambda a, b: hash(a) ^ hash(b), self.__transformations, 0)
