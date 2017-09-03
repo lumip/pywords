@@ -1,6 +1,7 @@
 import abc
 from typing import List
 
+
 class WordProcessor(metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
@@ -10,6 +11,7 @@ class WordProcessor(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def process_output(self, s: str) -> str:
         pass
+
 
 class HangeulComposer(WordProcessor):
 
@@ -74,6 +76,16 @@ class HangeulComposer(WordProcessor):
 
     def process_output(self, s: str) -> str:
         return self.compose(s)
+
+
+class StripProcessor(WordProcessor):
+
+    def process_input(self, s: str) -> str:
+        return s.strip()
+
+    def process_output(self, s: str) -> str:
+        return s
+
 
 class CombinedProcessor(WordProcessor):
 
