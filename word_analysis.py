@@ -301,8 +301,8 @@ class EditTransformation(WordTransformation):
             replace_part = "replace {1} with {2}"
         return (find_part + replace_part).format(self.__pre_pattern, self.__replaced, self.__insertee)
 
-#    def __hash__(self) -> int:
-#        return hash(self.__replaced) ^ hash(self.__insertee)
+    def __hash__(self) -> int:
+        return 11 * hash(self.__replaced) ^ 23 * hash(self.__insertee)
 
     def maybe_joinable(self, other: WordTransformation) -> bool:
         if not isinstance(other, WordTransformation): return False

@@ -1,48 +1,10 @@
 import codecs
-from typing import Set
-from sklearn.tree import DecisionTreeClassifier, export_graphviz
+from sklearn.tree import DecisionTreeClassifier
 from sklearn.feature_extraction import DictVectorizer
+import graphviz
 
-import word_analysis as ana
 import input_parsing as par
-
-# todo: split Korean (or other) compound runes into single character runes by detecting and preprocessing
-class TrainingSetElement:
-
-    def __init__(self, word_a: str, word_b: str) -> None:
-        self.__word_a = word_a
-        self.__word_b = word_b
-        lcs_matrix = ana.LCSMatrix(word_a, word_b)
-        subsequence_intervals = ana.WordSubsequenceIntervals(lcs_matrix)
-        transformation = ana.build_word_transformation(subsequence_intervals)
-        self.__subsequence_intervals = subsequence_intervals
-        self.__transformation = transformation
-
-    @property
-    def word_a(self) -> str:
-        return self.__word_a
-
-    @property
-    def word_b(self) -> str:
-        return self.__word_b
-
-    @property
-    def transformation(self) -> ana.WordTransformation:
-        return self.__transformation
-
-    @property
-    def subsequence_intervals(self) -> ana.WordSubsequenceIntervals:
-        return self.__subsequence_intervals
-
-    # def __hash__(self) -> int:
-    #     return hash(self.__subsequence_intervals)
-    #
-    # def __eq__(self, other) -> bool:
-    #     if not isinstance(other, TrainingSetElement): return False
-    #     return other.subsequence_intervals == self.subsequence_intervals
-
-    def __repr__(self) -> str:
-        return "({}, {}, {})".format(self.word_a, self.word_b, repr(self.transformation))
+from training_data_structures import TrainingSetElement, ClusterSet
 
 input_processor = par.CombinedProcessor([par.HangeulComposer()])
 
@@ -59,52 +21,12 @@ training_set = [TrainingSetElement(pair[0], pair[1]) for pair in word_pairs]
 
 print(training_set)
 
-class Cluster:
-
-    def __init__(self, first_item: TrainingSetElement):
-        self.__transformation = first_item.transformation # type: ana.WordTransformation
-        self.__items = {first_item} # type: Set[TrainingSetElement]
-
-    def can_add_item(self, item: TrainingSetElement) -> bool:
-        if self.__transformation.maybe_joinable(item.transformation):
-            joined_transformation = self.__transformation.join(item.transformation)
-            for e in self.__items:
-                if joined_transformation.apply(e.word_a) != e.word_b:
-                    return False
-            if joined_transformation.apply(item.word_a) != item.word_b:
-                return False
-            return True
-        return False
-
-    def add_item(self, item: TrainingSetElement) -> bool:
-        if self.can_add_item(item):
-            joined_transformation = self.__transformation.join(item.transformation)
-            self.__transformation = joined_transformation
-            self.__items.add(item)
-            return True
-        return False
-
-    @property
-    def transformation(self) -> ana.WordTransformation:
-        return self.__transformation
-
-    @property
-    def items(self):
-        return self.__items.copy()
-
-    def __repr__(self) -> str:
-        return "<Cluster, {}, [{}] {} elements>".format(str(self.transformation), self.__items, len(self.__items))
-
 print("Clustering training word pairs by local transformations...")
-clusters = []
+clusters = ClusterSet()
 for training_instance in training_set:
-    found_cluster = False
-    for cluster in clusters:
-        if cluster.add_item(training_instance):
-            found_cluster = True
-            break
-    if not found_cluster:
-        clusters.append(Cluster(training_instance))
+     clusters.add(training_instance)
+
+clusters = clusters.get_clusters()
 
 print("... split word pairs into {} clusters of similar transformations".format(len(clusters)))
 print(clusters)
@@ -128,7 +50,6 @@ for c, cluster in enumerate(clusters):
         x_data.append(features)
         c_data.append(c)
 
-#print(x_data)
 vectorizer = DictVectorizer()
 x_data = vectorizer.fit_transform(x_data)
 
@@ -139,19 +60,6 @@ classifier = DecisionTreeClassifier(criterion="entropy")
 classifier.fit(x_data, c_data)
 
 print("Creating tree visualization...")
-
-import graphviz
-#class_names = list(input_processor.process_output(str(cluster.transformation)) for cluster in clusters)
-#class_names = list("{} : {} -> {}".format(str(rule), training_instance.word_a, training_instance.word_b) for rule, training_instance in ((cluster.transformation, cluster.items.pop()) for cluster in clusters))
-#dot_data = export_graphviz(classifier,
-#                           out_file=None,
-#                           feature_names=vectorizer.get_feature_names(),
-#                           class_names=class_names,
-#                           filled=True,
-#                           rounded=True)
-#graph = graphviz.Source(dot_data)
-#graph.format = "svg"
-#graph.render("classifier")
 
 def make_leaf_label(class_index) -> str:
     cluster = clusters[class_index]
@@ -211,12 +119,3 @@ for i in range(t.node_count):
 graph.render("rules")
 
 print("done!")
-
-
-# print("Clustering training word pairs by local transformations...")
-# clusters = ClusterSet()
-# for elem in training_set:
-#     clusters.add(elem)
-#
-# clusters = clusters.get_clusters()
-# print(clusters)

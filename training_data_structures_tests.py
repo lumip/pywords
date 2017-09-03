@@ -1,7 +1,8 @@
 import unittest
 
-import cluster_set
+from training_data_structures import TrainingSetElement, Cluster, FrozenCluster, ClusterSet
 
+# todo: complete tests
 
 class ClusterSetTests(unittest.TestCase):
 
@@ -20,7 +21,7 @@ class ClusterSetTests(unittest.TestCase):
             return "(" + str(self._value) + " # " + str(self._hash) + ")@" + str(id(self))
 
     def test_cluster_set(self) -> None:
-        c = cluster_set.ClusterSet()
+        c = ClusterSet()
         c.add(self.TestElem(value=1, hash=1))
         c.add(self.TestElem(value=2, hash=2))
         c.add(self.TestElem(value=3, hash=2))
