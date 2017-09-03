@@ -296,9 +296,14 @@ class EditTransformation(WordTransformation):
         find_part = ""
         if len(self.__pre_pattern + self.__replaced) > 0:
             find_part = "find ~{0}{1} and "
-        replace_part = "add {2}"
-        if len(self.__replaced) > 0:
+        if len(self.__replaced) > 0 and len(self.__insertee) > 0:
             replace_part = "replace {1} with {2}"
+        elif len(self.__replaced) > 0:
+            replace_part = "remove {1}"
+        elif len(self.__insertee) > 0:
+            replace_part = "add {2}"
+        else:
+            replace_part = "leave it"
         return (find_part + replace_part).format(self.__pre_pattern, self.__replaced, self.__insertee)
 
     def __hash__(self) -> int:
