@@ -18,8 +18,6 @@ import unittest
 
 from training_data_structures import TrainingSetElement, Cluster, FrozenCluster, ClusterSet
 
-# todo: complete tests
-
 class ClusterSetTests(unittest.TestCase):
 
     class TestElem:

@@ -31,12 +31,9 @@ def exit_with_usage():
     print("usage: {} [-v|--visualize] [-o <output_file>|--outfile=<output_file>] [no_saveout] <input_file>".format(sys.argv[0]))
     sys.exit(2)
 
-#todo: own tree implementation at some point? better dealing with character discrimintation (essentially non-binary) and no need for vectorizer? can easier be replaced with incremental tree as well (not present in sklearn)
-
-
 def main(argv):
     try:
-        opts, args = getopt.getopt(argv, "hvo:", ["outfile=", "visualize", "no_saveout"]) # todo: allow incremental training later on (first emulate)
+        opts, args = getopt.getopt(argv, "hvo:", ["outfile=", "visualize", "no_saveout"])
     except getopt.GetoptError:
         exit_with_usage()
 
@@ -76,9 +73,6 @@ def main(argv):
     clusters = clusters.get_clusters()
     print("... split word pairs into {} clusters of similar transformations".format(len(clusters)))
 
-    # todo: [done] make transformations invariant to skip lengths (same replacements and inserts -> covered by same transformation for different skip lengths)?
-    # todo: use ML to discover similar rules for the above instead of hardcoding?
-
     print("Extracting features for training...")
     x_data = []
     c_data = []
@@ -104,7 +98,6 @@ def main(argv):
 
     if save_classifier:
         # sklearn advises to use pickle to store classifiers: http://scikit-learn.org/stable/modules/model_persistence.html
-        # todo: can do better than just pickle with own implementation?
         print("Storing classifier...")
         with open(output_name + ".clf", "wb") as output_file:
             pickle.dump(classifier, output_file)

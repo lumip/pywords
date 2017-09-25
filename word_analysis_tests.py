@@ -31,11 +31,6 @@ class VerbsTests(unittest.TestCase):
     def test_build_intervals_liegen_gelegen(self) -> None:
         word_a = "liegen"
         word_b = "gelegen"
-        #expected_interval_pairs = [verbs.IntervalPair(verbs.Interval(0, 2), verbs.Interval(0, 3), False),
-        #                           verbs.IntervalPair(verbs.Interval(2, 6), verbs.Interval(3, 7), True)]
-        # todo: is that a desirable output? probably not -> the above result is achieved with prioritizing edits or deletes over inserts
-        # the lower result is achieved with prioritizing inserts in draws. is this always desirable? instead
-        # of establishing an order, should the costs for steps in the lcs computation be adjusted?
         expected_interval_pairs = (word_analysis.IntervalPair(word_analysis.Interval(0, 0), word_analysis.Interval(0, 2), False),
                                    word_analysis.IntervalPair(word_analysis.Interval(0, 1), word_analysis.Interval(2, 3), True),
                                    word_analysis.IntervalPair(word_analysis.Interval(1, 2), word_analysis.Interval(3, 3), False),
@@ -337,7 +332,6 @@ class TransformationSequenceTests(unittest.TestCase):
     def test_maybe_joinable_different_lengths(self) -> None:
         # the below (different length) is not supported even though transf2 could be represented by [EditTransformation("asdf", "", "foo")]
         # a construction like this will never happen in current use cases, though
-        # todo: maybe implemented a normalization procedure that merges prefix-only leading or no-prefix following Edits
         # (e.g. ("abc", "", "") + ("def", "foo", "bar") = ("abcdef", "foo", "bar") and ("abc", "foo", "bar") + ("", "hugo", "ilse") = ("abc", "foohugo", "barilse"))
         subt1 = word_analysis.EditTransformation("", "", "foo")
         subt2 = word_analysis.EditTransformation("asdf", "", "")
@@ -347,8 +341,6 @@ class TransformationSequenceTests(unittest.TestCase):
         self.assertFalse(transf2.maybe_joinable(transf1))
 
     def test_maybe_joinable_single_elements(self) -> None:
-        # todo: support for this needs to be implemented
-        # todo: needs tests for symmetric call from EditTransformation
         subt1 = word_analysis.EditTransformation("abc", "foo", "bar")
         transf1 = word_analysis.WordTransformationSequence([subt1])
         transf2 = word_analysis.WordTransformationSequence([word_analysis.EditTransformation("abc", "o", "bar")])

@@ -203,7 +203,7 @@ class WordSubsequenceIntervals:
                 i = i - 1
                 j = j - 1
             else:
-                # todo: prioritizing delete steps in draws might give more favorable results? but always?
+                # prioritizing delete steps in draws gives more favorable results. but always?
                 # it splits "liegen" and "gelegen" into |  |l|i|egen|
                 #                                       |ge|l| |egen|
                 # instead of | li|egen|

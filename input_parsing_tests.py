@@ -45,8 +45,6 @@ class HangeulComposerTests(unittest.TestCase):
         self.assertEquals("생각해요", output)
 
 
-    # todo: tests with uncomposable elements (single elements and non-hangeul letters)
-
 class CombinedProcessorTests(unittest.TestCase):
 
     class SubstitutionProcessor(input_parsing.WordProcessor):
